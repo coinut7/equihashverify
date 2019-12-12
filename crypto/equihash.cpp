@@ -33,12 +33,15 @@ int Equihash<N,K>::InitialiseState(eh_HashState& base_state)
     uint32_t le_N = htole32(N);
     uint32_t le_K = htole32(K);
     unsigned char personalization[crypto_generichash_blake2b_PERSONALBYTES] = {};
-    memcpy(personalization, "ZcashPoW", 8);
+    if( (le_N == 200 && le_K == 9)  || (le_N == 96 && le_K == 5) )
+        memcpy(personalization, "ZcashPoW", 8);
+    else
+        memcpy(personalization, "FABcoin_", 8);
     memcpy(personalization+8,  &le_N, 4);
     memcpy(personalization+12, &le_K, 4);
     return crypto_generichash_blake2b_init_salt_personal(&base_state,
                                                          NULL, 0, // No key.
-                                                         (512/N)*N/8,
+                                                         HashOutput,
                                                          NULL,    // No salt.
                                                          personalization);
 }
@@ -58,11 +61,12 @@ void ExpandArray(const unsigned char* in, size_t in_len,
                  unsigned char* out, size_t out_len,
                  size_t bit_len, size_t byte_pad)
 {
-    assert(bit_len >= 8);
-    assert(8*sizeof(uint32_t) >= 7+bit_len);
+//    assert(bit_len >= 8);
+//    assert(8*sizeof(uint32_t) >= 7+bit_len);
 
     size_t out_width { (bit_len+7)/8 + byte_pad };
-    assert(out_len == 8*out_width*in_len/bit_len);
+
+//    assert(out_len == 8*out_width*in_len/bit_len);
 
     uint32_t bit_len_mask { ((uint32_t)1 << bit_len) - 1 };
 
@@ -547,9 +551,9 @@ bool Equihash<N,K>::OptimisedSolve(const eh_HashState& base_state,
                 }
 
                 // 2c) Calculate tuples (X_i ^ X_j, (i, j))
-                bool checking_for_zero = (i == 0 && Xt[0].IsZero(hashLen));
-                for (int l = 0; l < j - 1; l++) {
-                    for (int m = l + 1; m < j; m++) {
+                //bool checking_for_zero = (i == 0 && Xt[0].IsZero(hashLen));
+                for (size_t l = 0; l < j - 1; l++) {
+                    for (size_t m = l + 1; m < j; m++) {
                         // We truncated, so don't check for distinct indices here
                         TruncatedStepRow<TruncatedWidth> Xi {Xt[i+l], Xt[i+m],
                                                              hashLen, lenIndices,
@@ -732,11 +736,11 @@ bool Equihash<N,K>::IsValidSolution(const eh_HashState& base_state, std::vector<
 
     std::vector<FullStepRow<FinalFullWidth>> X;
     X.reserve(1 << K);
-    unsigned char tmpHash[HashOutput];
+    unsigned char tmpHash[HashOutput] = {};
     for (eh_index i : GetIndicesFromMinimal(soln, CollisionBitLength)) {
         GenerateHash(base_state, i/IndicesPerHashOutput, tmpHash, HashOutput);
-        X.emplace_back(tmpHash+((i % IndicesPerHashOutput) * N/8),
-                       N/8, HashLength, CollisionBitLength, i);
+        X.emplace_back(tmpHash+((i % IndicesPerHashOutput) * HashLen),
+                       HashLen, HashLength, CollisionBitLength, i);
     }
 
     size_t hashLen = HashLength;
@@ -816,3 +820,17 @@ template bool Equihash<48,5>::OptimisedSolve(const eh_HashState& base_state,
                                              const std::function<bool(EhSolverCancelCheck)> cancelled);
 #endif
 template bool Equihash<48,5>::IsValidSolution(const eh_HashState& base_state, std::vector<unsigned char> soln);
+
+// Explicit instantiations for Equihash<184,7>
+template int Equihash<184,7>::InitialiseState(eh_HashState& base_state);
+
+#ifdef ENABLE_MINING
+template bool Equihash<184,7>::BasicSolve(const eh_HashState& base_state,
+                                         const std::function<bool(std::vector<unsigned char>)> validBlock,
+                                         const std::function<bool(EhSolverCancelCheck)> cancelled);
+template bool Equihash<184,7>::OptimisedSolve(const eh_HashState& base_state,
+                                             const std::function<bool(std::vector<unsigned char>)> validBlock,
+                                             const std::function<bool(EhSolverCancelCheck)> cancelled);
+#endif
+template bool Equihash<184,7>::IsValidSolution(const eh_HashState& base_state, std::vector<unsigned char> soln);
+
