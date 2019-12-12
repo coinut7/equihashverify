@@ -10,16 +10,16 @@
 using namespace v8;
 
 int verifyEH(const char *hdr, const std::vector<unsigned char> &soln){
-  unsigned int n = 144;
-  unsigned int k = 5;
+  unsigned int n = 184;
+  unsigned int k = 7;
 
   // Hash state
   crypto_generichash_blake2b_state state;
   EhInitialiseState(n, k, state);
 
-  crypto_generichash_blake2b_update(&state, (const unsigned char*)hdr, 140);
+  crypto_generichash_blake2b_update(&state, (const unsigned char*)hdr, 204);
 
-  bool isValid = Eh144_5.IsValidSolution(state, soln);
+  bool isValid = Eh184_7.IsValidSolution(state, soln);
   
   return isValid;
 }
@@ -44,7 +44,7 @@ void Verify(const v8::FunctionCallbackInfo<Value>& args) {
   }
 
   const char *hdr = node::Buffer::Data(header);
-  if(node::Buffer::Length(header) != 140) {
+  if(node::Buffer::Length(header) != 204) {
 	  //invalid hdr length
 	  args.GetReturnValue().Set(false);
 	  return;
