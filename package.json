@@ -4,7 +4,7 @@
   "description": "function to check whether an Equihash solution is valid",
   "main": "equihashverify",
   "scripts": {
-    "install": "set V=1 node-gyp rebuild",
+    "install": "env V=1 node-gyp rebuild",
     "test": "mocha"
   },
   "repository": {
